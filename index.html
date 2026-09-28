@@ -14,6 +14,8 @@
             --secondary-text: #646669;
             --key-color: #2c2e31;
             --key-text: #d1d0c5;
+            --label-base: #f5f5f5;   /* base ("black") layer legend, top-left */
+            --label-hold: #8ab4f8;   /* Space-hold ("blue") layer legend, top-right */
             --correct: #d1d0c5;
             --error: #ca4754;
             --shadow: rgba(0, 0, 0, 0.4);
@@ -153,16 +155,23 @@
         #keyboardSvg { width: 100%; height: auto; overflow: visible; display: block; }
         .key-rect { fill: var(--key-color); rx: 8; ry: 8; transition: fill 0.15s ease, stroke 0.15s ease; stroke: #1e1e1e; stroke-width: 2px; }
         .key-text { font-family: 'Poppins', sans-serif; text-anchor: middle; dominant-baseline: central; fill: var(--key-text); pointer-events: none; font-weight: 500; }
-        .key-group { cursor: grab; }
+        .key-group { cursor: default; }
         
         .key-rect.active { fill: var(--correct) !important; stroke: var(--correct) !important; }
         .key-rect.active-error { fill: var(--error) !important; stroke: var(--error) !important; }
         .key-group.expected .key-rect { stroke: var(--text-color); stroke-width: 3; }
         .key-group.expected text { fill: #f8fafc !important; font-weight: 800; }
         /* Hold-layer label (MonoTypist Space-hold layer) and its "next key" hint */
-        .key-sub { font-family: 'Poppins', sans-serif; text-anchor: end; dominant-baseline: central; fill: var(--secondary-text); font-size: 11px; pointer-events: none; font-weight: 600; }
+        .key-text.base-legend { fill: var(--label-base); }
+        .key-icon { pointer-events: none; }
+        .key-icon .ic { fill: none; stroke: var(--label-base); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .key-icon .ic-fill { fill: var(--label-base); }
+        .key-icon .ic-cut { fill: none; stroke: var(--key-color); stroke-width: 2.2; stroke-linecap: round; }
+        .key-icon .ic-text { fill: var(--label-base); font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 9px; text-anchor: middle; dominant-baseline: central; }
+        .key-icon .ic-accent { fill: var(--label-hold); }
+        .key-sub { font-family: 'Poppins', sans-serif; text-anchor: end; dominant-baseline: central; fill: var(--label-hold); font-size: 16px; pointer-events: none; font-weight: 600; }
         .key-group.expected-hold .key-rect { stroke: var(--text-color); stroke-width: 3; stroke-dasharray: 6 4; }
-        .key-group.expected-hold .key-sub { fill: var(--text-color); font-size: 14px; font-weight: 800; }
+        .key-group.expected-hold .key-sub { fill: var(--text-color); font-weight: 800; }
         
         /* Homerow Highlight */
         .key-group.homerow .key-rect { stroke: var(--text-color); fill: rgba(255, 255, 255, 0.05); }
@@ -354,8 +363,8 @@
                     <span class="mt-setting-desc">Outline the expected key</span>
                 </div>
                 <div class="mt-setting-action">
-                    <button class="mt-toggle-btn" id="tgl-hints-off" onclick="setPref('hints', false)">off</button>
-                    <button class="mt-toggle-btn active" id="tgl-hints-on" onclick="setPref('hints', true)">on</button>
+                    <button class="mt-toggle-btn active" id="tgl-hints-off" onclick="setPref('hints', false)">off</button>
+                    <button class="mt-toggle-btn" id="tgl-hints-on" onclick="setPref('hints', true)">on</button>
                 </div>
             </div>
             <div class="mt-setting-row">
@@ -435,7 +444,7 @@
 
         <div class="keyboard-container" id="keyboardContainer">
             <svg id="keyboardSvg"></svg>
-            <div class="drag-hint" id="dragHint">Drag keys to tweak target layout • Tab+Enter to restart</div>
+            <div class="drag-hint" id="dragHint">Tab+Enter to restart</div>
         </div>
     </div>
 
@@ -480,10 +489,12 @@
 	
     const HARDWARE = {
         // MonoTypist (torjek v4_2, left half only). Geometry from the PCB key centres in zmk_2025/scratch/generate_dts.py;
-        // the three thumb keys sit parallel at 20deg like on the real board.
+        // the three thumb keys sit parallel at 20deg like on the real board; Enter and Del are 1.25u tall.
+        // The nav switch is tilted the same 20deg around its centre.
         // `base` / `hold.base` are ZMK keycodes; osLabel() turns them into what each OS keyboard language types.
+        // `base` follows the simple-mode keymap (v4_2_*_simple): numbers on the top row instead of macros.
         // `hold` is the blue layer reached by holding the Space thumb key: the right hand mirrored onto the left.
-        monotypist: { name: "MonoTypist", geo: [ {"x": 0.0, "y": 0.472}, {"x": 0.997, "y": 0.394}, {"x": 1.995, "y": 0.184}, {"x": 2.992, "y": 0.0}, {"x": 3.99, "y": 0.341}, {"x": 4.987, "y": 0.525}, {"x": 0.0, "y": 1.47}, {"x": 0.997, "y": 1.391}, {"x": 1.995, "y": 1.181}, {"x": 2.992, "y": 0.998}, {"x": 3.99, "y": 1.339}, {"x": 4.987, "y": 1.522}, {"x": 0.0, "y": 2.467}, {"x": 0.997, "y": 2.388}, {"x": 1.995, "y": 2.178}, {"x": 2.992, "y": 1.995}, {"x": 3.99, "y": 2.336}, {"x": 4.987, "y": 2.52}, {"x": 0.0, "y": 3.465}, {"x": 0.997, "y": 3.386}, {"x": 1.995, "y": 3.176}, {"x": 2.992, "y": 2.992}, {"x": 3.99, "y": 3.349}, {"x": 4.987, "y": 3.532}, {"x": 0.289, "y": 4.462}, {"x": 1.286, "y": 4.462}, {"x": 2.703, "y": 4.514}, {"x": 4.165, "y": 4.609, "r": 20, "rx": 4.665, "ry": 5.109}, {"x": 5.132, "y": 4.882, "r": 20, "rx": 5.632, "ry": 5.382}, {"x": 6.008, "y": 5.373, "r": 20, "rx": 6.508, "ry": 5.873}, {"x": 6.353, "y": 3.912, "w": 0.42, "h": 0.42}, {"x": 6.353, "y": 4.647, "w": 0.42, "h": 0.42}, {"x": 6.72, "y": 4.28, "w": 0.42, "h": 0.42}, {"x": 5.986, "y": 4.28, "w": 0.42, "h": 0.42}, {"x": 6.353, "y": 4.28, "w": 0.42, "h": 0.42} ], pos: [ "L_C0R0", "L_C1R0", "L_C2R0", "L_C3R0", "L_C4R0", "L_C5R0", "L_C0R1", "L_C1R1", "L_C2R1", "L_C3R1", "L_C4R1", "L_C5R1", "L_C0R2", "L_C1R2", "L_C2R2", "L_C3R2", "L_C4R2", "L_C5R2", "L_C0R3", "L_C1R3", "L_C2R3", "L_C3R3", "L_C4R3", "L_C5R3", "L_C1R4", "L_C2R4", "L_ENC", "L_T1", "L_T2", "L_T3", "L_TNU", "L_TND", "L_TNR", "L_TNL", "L_TNC" ], base: ['Esc','Calc','Emoji','Snip','git','Clip','Tab','Q','W','F','P','G','Backsp','A','R','S','T','D','Shift','Z','X','C','V','B','Ctrl','Alt','Win','Enter','Space','Del','↑','↓','→','←','M'], layouts: {}, hold: { key: 'L_T2', base: ['GRAVE','N0','N9','N8','N7','N6','LBKT','SEMI','Y','U','L','J','SQT','O','I','E','N','H','S','FSLH','DOT','COMMA','M','K'], layouts: {} } }
+        monotypist: { name: "MonoTypist", geo: [ {"x": 0.0, "y": 0.472}, {"x": 0.997, "y": 0.394}, {"x": 1.995, "y": 0.184}, {"x": 2.992, "y": 0.0}, {"x": 3.99, "y": 0.341}, {"x": 4.987, "y": 0.525}, {"x": 0.0, "y": 1.47}, {"x": 0.997, "y": 1.391}, {"x": 1.995, "y": 1.181}, {"x": 2.992, "y": 0.998}, {"x": 3.99, "y": 1.339}, {"x": 4.987, "y": 1.522}, {"x": 0.0, "y": 2.467}, {"x": 0.997, "y": 2.388}, {"x": 1.995, "y": 2.178}, {"x": 2.992, "y": 1.995}, {"x": 3.99, "y": 2.336}, {"x": 4.987, "y": 2.52}, {"x": 0.0, "y": 3.465}, {"x": 0.997, "y": 3.386}, {"x": 1.995, "y": 3.176}, {"x": 2.992, "y": 2.992}, {"x": 3.99, "y": 3.349}, {"x": 4.987, "y": 3.532}, {"x": 0.289, "y": 4.462}, {"x": 1.286, "y": 4.462}, {"x": 2.703, "y": 4.462}, {"x": 4.165, "y": 4.484, "h": 1.25, "r": 20, "rx": 4.665, "ry": 5.109}, {"x": 5.132, "y": 4.882, "r": 20, "rx": 5.632, "ry": 5.382}, {"x": 6.008, "y": 5.248, "h": 1.25, "r": 20, "rx": 6.508, "ry": 5.873}, {"x": 6.353, "y": 3.912, "w": 0.42, "h": 0.42, "r": 20, "rx": 6.563, "ry": 4.49}, {"x": 6.353, "y": 4.647, "w": 0.42, "h": 0.42, "r": 20, "rx": 6.563, "ry": 4.49}, {"x": 6.72, "y": 4.28, "w": 0.42, "h": 0.42, "r": 20, "rx": 6.563, "ry": 4.49}, {"x": 5.986, "y": 4.28, "w": 0.42, "h": 0.42, "r": 20, "rx": 6.563, "ry": 4.49}, {"x": 6.353, "y": 4.28, "w": 0.42, "h": 0.42, "r": 20, "rx": 6.563, "ry": 4.49} ], pos: [ "L_C0R0", "L_C1R0", "L_C2R0", "L_C3R0", "L_C4R0", "L_C5R0", "L_C0R1", "L_C1R1", "L_C2R1", "L_C3R1", "L_C4R1", "L_C5R1", "L_C0R2", "L_C1R2", "L_C2R2", "L_C3R2", "L_C4R2", "L_C5R2", "L_C0R3", "L_C1R3", "L_C2R3", "L_C3R3", "L_C4R3", "L_C5R3", "L_C1R4", "L_C2R4", "L_ENC", "L_T1", "L_T2", "L_T3", "L_TNU", "L_TND", "L_TNR", "L_TNL", "L_TNC" ], base: ['Esc','N1','N2','N3','N4','N5','Tab','Q','W','F','P','G','Backsp','A','R','S','T','D','Shift','Z','X','C','V','B','Ctrl','Alt','Win','Enter','Space','Del','↑','↓','→','←','NONE'], layouts: {}, hold: { key: 'L_T2', base: ['GRAVE','N0','N9','N8','N7','N6','LBKT','SEMI','Y','U','L','J','SQT','O','I','E','N','H','S','FSLH','DOT','COMMA','M','K'], layouts: {} } }
     };
 
     // OS keyboard languages. The v4_2_hu and v4_2_da keymaps share the base and Space-hold layers,
@@ -494,6 +505,22 @@
         da: { name: 'Danish', chars: { 'GRAVE':'½', 'LBKT':'Å', 'SEMI':'Æ', 'SQT':'Ø', 'FSLH':'-' } },
         hu: { name: 'Hungarian', chars: { 'Y':'Z', 'Z':'Y', 'GRAVE':'0', 'N0':'Ö', 'LBKT':'Ő', 'SEMI':'É', 'SQT':'Á', 'FSLH':'-' } }
     };
+    // Keycap icons for the word labels (drawn in a 24x24 box), matching the MonoTypist keycap set.
+    const KEY_ICONS = {
+        'Esc':    '<path class="ic" d="M10.66 5.35A8 8 0 1 1 5.35 10.66"/><path class="ic" d="M12 12L4 4M4 9V4h5"/>',   // ISO escape symbol
+        'Tab':    '<path class="ic" d="M4 8h15M15 4l4 4-4 4"/><path class="ic" d="M20 16H5M9 12l-4 4 4 4"/>',
+        'Backsp': '<path class="ic-fill" d="M8.5 5H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8.5L2 12z"/><path class="ic-cut" d="M11.5 9l6 6M17.5 9l-6 6"/>',
+        'Shift':  '<path class="ic" d="M12 3.5l-7 7.5h4v5h6v-5h4z"/><path class="ic" d="M8 20.5h8"/>',
+        'Enter':  '<path class="ic" d="M19 5v7.5H5.5"/><path class="ic" d="M9.5 8.5l-4 4 4 4"/>',
+        'Space':  '<text class="ic-text" x="12" y="12.5">Mono</text><rect class="ic-accent" x="0" y="17.5" width="24" height="2.2" rx="1.1"/>',
+        'Del':    '<path class="ic-fill" d="M15.5 5H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h11.5L22 12z"/><path class="ic-cut" d="M6.5 9l6 6M12.5 9l-6 6"/>',
+        '↑':      '<path class="ic" d="M12 19V5M6 11l6-6 6 6"/>',
+        '↓':      '<path class="ic" d="M12 5v14M6 13l6 6 6-6"/>',
+        '→':      '<path class="ic" d="M5 12h14M13 6l6 6-6 6"/>',
+        '←':      '<path class="ic" d="M19 12H5M11 6l-6 6 6 6"/>'
+    };
+    const KEY_TEXT = { 'Ctrl': 'CTRL', 'Alt': 'ALT', 'Win': 'WIN' };   // printed in capitals like the keycaps
+
     function osLabel(code, lang) { return OS_LANGS[lang].chars[code] ?? US_CHARS[code] ?? code; }
     function buildOsLayouts() {
         Object.values(HARDWARE).forEach(hw => Object.keys(OS_LANGS).forEach(lang => {
@@ -628,7 +655,7 @@
     let config = {
         lang: 'en',
         hw: 'monotypist', sourceKey: 'us', tgt: 'default', wordCount: '25', timed: '0', mode: 'words',
-        showKb: true, homerow: false, keypress: true, hints: true,
+        showKb: true, homerow: false, keypress: true, hints: false,
         mirror: false, sound: true, debug: false,
         draggedMap: null
     };
@@ -686,7 +713,8 @@
         config.hw = 'monotypist'; config.mirror = false;
         if (!OS_LANGS[config.sourceKey]) config.sourceKey = 'us';
         if (config.tgt !== 'default' && config.tgt !== 'custom_dragged' && !OS_LANGS[config.tgt]) config.tgt = 'default';
-        if (config.draggedMap && !HARDWARE[config.hw].pos.every(p => p in config.draggedMap)) {
+        // Key dragging is switched off, so drop any layout saved from an earlier drag.
+        if (config.draggedMap) {
             config.draggedMap = null; if (config.tgt === 'custom_dragged') config.tgt = 'default';
         }
         if (config.draggedMap && !Array.from(DOM.targetSelect.options).find(opt => opt.value === 'custom_dragged')) {
@@ -957,10 +985,13 @@
             
             // Secondary label (top-right corner) for the character on the hold layer.
             const sub = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            sub.setAttribute("class", "key-sub"); sub.setAttribute("x", w - 6); sub.setAttribute("y", 11);
+            sub.setAttribute("class", "key-sub"); sub.setAttribute("x", w - 9); sub.setAttribute("y", 15);
 
-            g.onmousedown = (e) => handleDragStart(e, p);
-            g.appendChild(rect); g.appendChild(text); g.appendChild(sub); DOM.keyboardSvg.appendChild(g);
+            // Dragging keys to rearrange the layout is hidden: no g.onmousedown -> handleDragStart.
+            const icon = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            icon.setAttribute("class", "key-icon");
+
+            g.appendChild(rect); g.appendChild(text); g.appendChild(sub); g.appendChild(icon); DOM.keyboardSvg.appendChild(g);
         });
         
         const pad = 12;
@@ -990,11 +1021,35 @@
             rect.style.opacity = isHidden ? "0" : "1";
             let displayLabel = (label === "SPACE" || label === " ") ? "Space" : (isBlank ? "" : label);
             text.textContent = displayLabel;
-            const isTiny = parseFloat(rect.getAttribute("width")) < 30;   // e.g. MonoTypist nav switch
-            text.setAttribute("font-size", isTiny ? "11px" : displayLabel.length > 2 ? "12px" : (displayLabel.length > 1 ? "14px" : "18px"));
+            const kw = parseFloat(rect.getAttribute("width")), kh = parseFloat(rect.getAttribute("height"));
+            const isTiny = kw < 30;   // e.g. MonoTypist nav switch
+            text.setAttribute("font-size", isTiny ? "11px" : displayLabel.length > 2 ? "12px" : (displayLabel.length > 1 ? "14px" : "17px"));
+
+            // Keycap-style legends: a single base character sits top-left (white), the Space-hold
+            // character top-right (light blue). Word labels (Backsp, Enter...) stay centred, lower if the key has a blue legend.
+            const holdLabel = hm[p] || "";
+            const cornerLegend = !isTiny && displayLabel.length === 1;
+            text.classList.toggle("base-legend", cornerLegend);
+            text.style.textAnchor = cornerLegend ? "start" : "middle";
+            text.setAttribute("x", cornerLegend ? 9 : kw / 2);
+            text.setAttribute("y", cornerLegend ? 15 : (holdLabel && !isTiny ? kh - 14 : kh / 2 + 1));
 
             const sub = g.querySelector('.key-sub');
-            if (sub) sub.textContent = hm[p] || "";
+            if (sub) sub.textContent = holdLabel;
+
+            // Word labels become keycap icons: top-left next to a blue legend (like letters), centred otherwise.
+            const iconEl = g.querySelector('.key-icon');
+            const iconSvg = KEY_ICONS[displayLabel];
+            if (iconEl) {
+                if (iconSvg) {
+                    const size = isTiny ? kw - 4 : holdLabel ? 20 : 28;
+                    const ix = holdLabel && !isTiny ? 7 : (kw - size) / 2, iy = holdLabel && !isTiny ? 5 : (kh - size) / 2;
+                    iconEl.setAttribute("transform", `translate(${ix}, ${iy}) scale(${size / 24})`);
+                    iconEl.innerHTML = iconSvg;
+                    text.textContent = "";
+                } else iconEl.innerHTML = "";
+            }
+            if (KEY_TEXT[displayLabel]) text.textContent = KEY_TEXT[displayLabel];
         });
         highlightExpected();
     }
