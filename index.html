@@ -15,7 +15,9 @@
             --key-color: #2c2e31;
             --key-text: #d1d0c5;
             --label-base: #f5f5f5;   /* base ("black") layer legend, top-left */
-            --label-hold: #8ab4f8;   /* Space-hold ("blue") layer legend, top-right */
+            --label-hold: #8ab4f8;
+            --label-red: #ff7b72;    /* red layer (hold Enter) legend, bottom-left, advanced mode */
+            --label-orange: #ffa94d; /* orange layer (hold Del) legend, bottom-right, advanced mode */   /* Space-hold ("blue") layer legend, top-right */
             --correct: #d1d0c5;
             --error: #ca4754;
             --shadow: rgba(0, 0, 0, 0.4);
@@ -71,6 +73,7 @@
         .mt-select option { background: var(--bg-color); color: var(--correct); }
 
         .settings-toggle { background: transparent; border: none; color: var(--secondary-text); font-size: 1.2rem; cursor: pointer; transition: var(--transition-speed); outline: none; padding: 5px; }
+        .settings-toggle svg { width: 20px; height: 20px; display: block; fill: currentColor; }
         .settings-toggle:hover { color: var(--text-color); transform: rotate(90deg); }
 
         /* --- FOCUS MODE LOGIC --- */
@@ -112,6 +115,28 @@
         .score-row:last-child { border-bottom: none; }
         .score-wpm { color: var(--text-color); font-size: 18px; font-weight: bold; min-width: 80px; }
         .score-details { color: var(--secondary-text); font-size: 12px; display: flex; gap: 15px; align-items: center;}
+
+        /* Progress chart */
+        .progress-card { padding: 14px 18px 8px; margin-bottom: 10px; }
+        .progress-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; font-size: 12px; color: var(--secondary-text); margin-bottom: 6px; }
+        .progress-legend span { display: inline-flex; align-items: center; gap: 6px; }
+        .progress-summary { margin-left: auto; }
+        .lg-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+        .lg-dot.test { background: var(--text-color); }
+        .lg-dot.other { border: 2px solid var(--secondary-text); box-sizing: border-box; }
+        .lg-line { width: 18px; height: 2px; background: var(--text-color); display: inline-block; border-radius: 1px; }
+        #progressChart { width: 100%; height: auto; display: block; overflow: visible; }
+        .pg-grid { stroke: var(--bg-color); stroke-width: 1.5; }
+        .pg-axis { fill: var(--secondary-text); font-size: 12px; font-family: 'Roboto Mono', monospace; }
+        .pg-avg { fill: none; stroke: var(--text-color); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; opacity: .9; }
+        .pg-dot .hit { fill: transparent; }
+        .pg-dot.test .mark { fill: var(--text-color); stroke: var(--key-color); stroke-width: 2; }
+        .pg-dot.other .mark { fill: var(--key-color); stroke: var(--secondary-text); stroke-width: 2; }
+        .pg-dot:hover .mark { stroke: var(--correct); }
+        #progressTip { position: fixed; pointer-events: none; z-index: 3000; background: var(--bg-color); color: var(--correct); border: 1px solid var(--key-color);
+                       font-size: 12px; line-height: 1.5; padding: 7px 10px; border-radius: 8px; opacity: 0; transition: opacity .1s;
+                       transform: translate(-50%, calc(-100% - 12px)); white-space: nowrap; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+        #progressTip span { color: var(--secondary-text); }
 
         /* --- TOAST NOTIFICATIONS --- */
         .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: var(--text-color); color: var(--bg-color); padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: bold; z-index: 9999; box-shadow: 0 10px 30px rgba(0,0,0,0.5); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); pointer-events: none; }
@@ -169,9 +194,15 @@
         .key-icon .ic-cut { fill: none; stroke: var(--key-color); stroke-width: 2.2; stroke-linecap: round; }
         .key-icon .ic-text { fill: var(--label-base); font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 9px; text-anchor: middle; dominant-baseline: central; }
         .key-icon .ic-accent { fill: var(--label-hold); }
+        .key-layer { font-family: 'Poppins', sans-serif; dominant-baseline: central; font-size: 13px; font-weight: 600; pointer-events: none; }
+        .key-layer.red { fill: var(--label-red); text-anchor: start; }
+        .key-layer.orange { fill: var(--label-orange); text-anchor: end; }
         .key-sub { font-family: 'Poppins', sans-serif; text-anchor: end; dominant-baseline: central; fill: var(--label-hold); font-size: 16px; pointer-events: none; font-weight: 600; }
         .key-group.expected-hold .key-rect { stroke: var(--text-color); stroke-width: 3; stroke-dasharray: 6 4; }
         .key-group.expected-hold .key-sub { fill: var(--text-color); font-weight: 800; }
+        /* red / orange symbol hint: show the dashed key, its own corner legend, but not the blue one */
+        .key-group.expected-red .key-sub, .key-group.expected-orange .key-sub { fill: var(--label-hold); font-weight: 600; }
+        .key-group.expected-red .key-layer.red, .key-group.expected-orange .key-layer.orange { fill: var(--text-color); font-weight: 800; }
         
         /* Homerow Highlight */
         .key-group.homerow .key-rect { stroke: var(--text-color); fill: rgba(255, 255, 255, 0.05); }
@@ -289,7 +320,7 @@
                 </select>
             </div>
             
-            <button class="settings-toggle" onclick="toggleSettings()" title="Settings">⚙️</button>
+            <button class="settings-toggle" onclick="toggleSettings()" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M9.47 3.99L10.00 1.18L14.00 1.18L14.53 3.99A8.4 8.4 0 0 1 15.88 4.55L18.23 2.93L21.07 5.77L19.45 8.12A8.4 8.4 0 0 1 20.01 9.47L22.82 10.00L22.82 14.00L20.01 14.53A8.4 8.4 0 0 1 19.45 15.88L21.07 18.23L18.23 21.07L15.88 19.45A8.4 8.4 0 0 1 14.53 20.01L14.00 22.82L10.00 22.82L9.47 20.01A8.4 8.4 0 0 1 8.12 19.45L5.77 21.07L2.93 18.23L4.55 15.88A8.4 8.4 0 0 1 3.99 14.53L1.18 14.00L1.18 10.00L3.99 9.47A8.4 8.4 0 0 1 4.55 8.12L2.93 5.77L5.77 2.93L8.12 4.55A8.4 8.4 0 0 1 9.47 3.99ZM15.4 12a3.4 3.4 0 1 0 -6.8 0a3.4 3.4 0 1 0 6.8 0Z"/></svg></button>
         </div>
     </header>
 
@@ -299,6 +330,20 @@
             <div class="settings-section-title">Personal Bests (Top 5)</div>
             <div class="settings-section" id="bestScoresList" style="margin-bottom: 10px;"></div>
         </div>
+
+        <div id="progressContainer" style="display:none;">
+            <div class="settings-section-title">Progress</div>
+            <div class="settings-section progress-card">
+                <div class="progress-legend">
+                    <span><i class="lg-dot test"></i>test</span>
+                    <span><i class="lg-dot other"></i>practice / stopped early</span>
+                    <span><i class="lg-line"></i>10-test average</span>
+                    <span class="progress-summary" id="progressSummary"></span>
+                </div>
+                <svg id="progressChart" role="img" aria-label="Words per minute of every logged try, oldest to newest"></svg>
+            </div>
+        </div>
+        <div id="progressTip"></div>
 
         <div class="settings-section-title">Input Language</div>
         <div class="settings-section">
@@ -365,6 +410,16 @@
                 <div class="mt-setting-action">
                     <button class="mt-toggle-btn active" id="tgl-hints-off" onclick="setPref('hints', false)">off</button>
                     <button class="mt-toggle-btn" id="tgl-hints-on" onclick="setPref('hints', true)">on</button>
+                </div>
+            </div>
+            <div class="mt-setting-row">
+                <div class="mt-setting-label">
+                    <span class="mt-setting-title">Advanced Mode</span>
+                    <span class="mt-setting-desc">Show the red (hold Enter) and orange (hold Del) layer symbols in the bottom corners of the keys</span>
+                </div>
+                <div class="mt-setting-action">
+                    <button class="mt-toggle-btn active" id="tgl-advanced-off" onclick="setPref('advanced', false)">off</button>
+                    <button class="mt-toggle-btn" id="tgl-advanced-on" onclick="setPref('advanced', true)">on</button>
                 </div>
             </div>
             <div class="mt-setting-row">
@@ -494,7 +549,24 @@
         // `base` / `hold.base` are ZMK keycodes; osLabel() turns them into what each OS keyboard language types.
         // `base` follows the simple-mode keymap (v4_2_*_simple): numbers on the top row instead of macros.
         // `hold` is the blue layer reached by holding the Space thumb key: the right hand mirrored onto the left.
-        monotypist: { name: "MonoTypist", geo: [ {"x": 0.0, "y": 0.472}, {"x": 0.997, "y": 0.394}, {"x": 1.995, "y": 0.184}, {"x": 2.992, "y": 0.0}, {"x": 3.99, "y": 0.341}, {"x": 4.987, "y": 0.525}, {"x": 0.0, "y": 1.47}, {"x": 0.997, "y": 1.391}, {"x": 1.995, "y": 1.181}, {"x": 2.992, "y": 0.998}, {"x": 3.99, "y": 1.339}, {"x": 4.987, "y": 1.522}, {"x": 0.0, "y": 2.467}, {"x": 0.997, "y": 2.388}, {"x": 1.995, "y": 2.178}, {"x": 2.992, "y": 1.995}, {"x": 3.99, "y": 2.336}, {"x": 4.987, "y": 2.52}, {"x": 0.0, "y": 3.465}, {"x": 0.997, "y": 3.386}, {"x": 1.995, "y": 3.176}, {"x": 2.992, "y": 2.992}, {"x": 3.99, "y": 3.349}, {"x": 4.987, "y": 3.532}, {"x": 0.289, "y": 4.462}, {"x": 1.286, "y": 4.462}, {"x": 2.703, "y": 4.462}, {"x": 4.165, "y": 4.484, "h": 1.25, "r": 20, "rx": 4.665, "ry": 5.109}, {"x": 5.132, "y": 4.882, "r": 20, "rx": 5.632, "ry": 5.382}, {"x": 6.008, "y": 5.248, "h": 1.25, "r": 20, "rx": 6.508, "ry": 5.873}, {"x": 6.353, "y": 3.912, "w": 0.42, "h": 0.42, "r": 20, "rx": 6.563, "ry": 4.49}, {"x": 6.353, "y": 4.647, "w": 0.42, "h": 0.42, "r": 20, "rx": 6.563, "ry": 4.49}, {"x": 6.72, "y": 4.28, "w": 0.42, "h": 0.42, "r": 20, "rx": 6.563, "ry": 4.49}, {"x": 5.986, "y": 4.28, "w": 0.42, "h": 0.42, "r": 20, "rx": 6.563, "ry": 4.49}, {"x": 6.353, "y": 4.28, "w": 0.42, "h": 0.42, "r": 20, "rx": 6.563, "ry": 4.49} ], pos: [ "L_C0R0", "L_C1R0", "L_C2R0", "L_C3R0", "L_C4R0", "L_C5R0", "L_C0R1", "L_C1R1", "L_C2R1", "L_C3R1", "L_C4R1", "L_C5R1", "L_C0R2", "L_C1R2", "L_C2R2", "L_C3R2", "L_C4R2", "L_C5R2", "L_C0R3", "L_C1R3", "L_C2R3", "L_C3R3", "L_C4R3", "L_C5R3", "L_C1R4", "L_C2R4", "L_ENC", "L_T1", "L_T2", "L_T3", "L_TNU", "L_TND", "L_TNR", "L_TNL", "L_TNC" ], base: ['Esc','N1','N2','N3','N4','N5','Tab','Q','W','F','P','G','Backsp','A','R','S','T','D','Shift','Z','X','C','V','B','Ctrl','Alt','Win','Enter','Space','Del','↑','↓','→','←','NONE'], layouts: {}, hold: { key: 'L_T2', base: ['GRAVE','N0','N9','N8','N7','N6','LBKT','SEMI','Y','U','L','J','SQT','O','I','E','N','H','S','FSLH','DOT','COMMA','M','K'], layouts: {} } }
+        monotypist: { name: "MonoTypist", geo: [ {"x": 0.0, "y": 0.472}, {"x": 0.997, "y": 0.394}, {"x": 1.995, "y": 0.184}, {"x": 2.992, "y": 0.0}, {"x": 3.99, "y": 0.341}, {"x": 4.987, "y": 0.525}, {"x": 0.0, "y": 1.47}, {"x": 0.997, "y": 1.391}, {"x": 1.995, "y": 1.181}, {"x": 2.992, "y": 0.998}, {"x": 3.99, "y": 1.339}, {"x": 4.987, "y": 1.522}, {"x": 0.0, "y": 2.467}, {"x": 0.997, "y": 2.388}, {"x": 1.995, "y": 2.178}, {"x": 2.992, "y": 1.995}, {"x": 3.99, "y": 2.336}, {"x": 4.987, "y": 2.52}, {"x": 0.0, "y": 3.465}, {"x": 0.997, "y": 3.386}, {"x": 1.995, "y": 3.176}, {"x": 2.992, "y": 2.992}, {"x": 3.99, "y": 3.349}, {"x": 4.987, "y": 3.532}, {"x": 0.289, "y": 4.462}, {"x": 1.286, "y": 4.462}, {"x": 2.703, "y": 4.462}, {"x": 4.165, "y": 4.484, "h": 1.25, "r": 20, "rx": 4.665, "ry": 5.109}, {"x": 5.132, "y": 4.882, "r": 20, "rx": 5.632, "ry": 5.382}, {"x": 6.008, "y": 5.248, "h": 1.25, "r": 20, "rx": 6.508, "ry": 5.873}, {"x": 6.353, "y": 3.912, "w": 0.42, "h": 0.42, "r": 20, "rx": 6.563, "ry": 4.49}, {"x": 6.353, "y": 4.647, "w": 0.42, "h": 0.42, "r": 20, "rx": 6.563, "ry": 4.49}, {"x": 6.72, "y": 4.28, "w": 0.42, "h": 0.42, "r": 20, "rx": 6.563, "ry": 4.49}, {"x": 5.986, "y": 4.28, "w": 0.42, "h": 0.42, "r": 20, "rx": 6.563, "ry": 4.49}, {"x": 6.353, "y": 4.28, "w": 0.42, "h": 0.42, "r": 20, "rx": 6.563, "ry": 4.49} ], pos: [ "L_C0R0", "L_C1R0", "L_C2R0", "L_C3R0", "L_C4R0", "L_C5R0", "L_C0R1", "L_C1R1", "L_C2R1", "L_C3R1", "L_C4R1", "L_C5R1", "L_C0R2", "L_C1R2", "L_C2R2", "L_C3R2", "L_C4R2", "L_C5R2", "L_C0R3", "L_C1R3", "L_C2R3", "L_C3R3", "L_C4R3", "L_C5R3", "L_C1R4", "L_C2R4", "L_ENC", "L_T1", "L_T2", "L_T3", "L_TNU", "L_TND", "L_TNR", "L_TNL", "L_TNC" ], base: ['Esc','N1','N2','N3','N4','N5','Tab','Q','W','F','P','G','Backsp','A','R','S','T','D','Shift','Z','X','C','V','B','Ctrl','Alt','Gui','Enter','Space','Del','↑','↓','→','←','NONE'], layouts: {}, hold: { key: 'L_T2', base: ['GRAVE','N0','N9','N8','N7','N6','LBKT','SEMI','Y','U','L','J','SQT','O','I','E','N','H','','FSLH','DOT','COMMA','M','K'], layouts: {} } }
+    };
+
+    // Red (hold Enter) and orange (hold Del) symbol layers, shown in advanced mode. Unlike the base and Space
+    // layers these differ per firmware: hu = v4_2_hu keymap on a Hungarian OS, da = v4_2_da keymap on a Danish OS.
+    // There is no US keymap, so us shows the symbols the layers are designed for (the hu set without Hungarian letters).
+    // '' = &trans (no legend). Order: row 0-3, columns 0-5, like MonoTypist pos.
+    const SYMBOL_LAYERS = {
+        red: {
+            us: ['','␣','','','','',     '"','*','7','8','9','>',   '','0','4','5','6','=',    '','+','1','2','3','<'],
+            da: ['¨','␣','£','€','$','~', '"','*','7','8','9','>',   "'",'0','4','5','6','=',   '','+','1','2','3','<'],
+            hu: ['','␣','Ü','Ö','Á','Í',  'Á','*','7','8','9','>',   'Á','0','4','5','6','=',   '','+','1','2','3','<']
+        },
+        orange: {
+            us: ['0','','','','','',       '%','\\','|','/','!','&', '{','[','(',')',']','}',   '','_',':','?','#','@'],
+            da: ['½','¨','?','§','^','´',  '%','\\','|','/','!','&', '/','[','(',')',']','}',   '','+',':',';','#','@'],
+            hu: ['0','Ú','Ű','Ő','É','Ó',  '%','\\','|','/','!','&', '{','[','(',')',']','}',   '','_',':','?','#','@']
+        }
     };
 
     // OS keyboard languages. The v4_2_hu and v4_2_da keymaps share the base and Space-hold layers,
@@ -519,7 +591,7 @@
         '→':      '<path class="ic" d="M5 12h14M13 6l6 6-6 6"/>',
         '←':      '<path class="ic" d="M19 12H5M11 6l-6 6 6 6"/>'
     };
-    const KEY_TEXT = { 'Ctrl': 'CTRL', 'Alt': 'ALT', 'Win': 'WIN' };   // printed in capitals like the keycaps
+    const KEY_TEXT = { 'Ctrl': 'CTRL', 'Alt': 'ALT', 'Gui': 'GUI' };   // printed in capitals like the keycaps
 
     function osLabel(code, lang) { return OS_LANGS[lang].chars[code] ?? US_CHARS[code] ?? code; }
     function buildOsLayouts() {
@@ -655,7 +727,7 @@
     let config = {
         lang: 'en',
         hw: 'monotypist', sourceKey: 'us', tgt: 'default', wordCount: '25', timed: '0', mode: 'words',
-        showKb: true, homerow: false, keypress: true, hints: false,
+        showKb: true, homerow: false, keypress: true, hints: false, advanced: false,
         mirror: false, sound: true, debug: false,
         draggedMap: null
     };
@@ -730,6 +802,7 @@
         syncToggleUI('homerow', config.homerow);
         syncToggleUI('keypress', config.keypress);
         syncToggleUI('hints', config.hints);
+        syncToggleUI('advanced', config.advanced);
         syncToggleUI('mirror', config.mirror);
         syncToggleUI('sound', config.sound);
         syncToggleUI('debug', config.debug);
@@ -745,7 +818,7 @@
         if (key === 'showKb') {
             DOM.keyboardContainer.style.display = config.showKb && !state.setupOpen ? 'flex' : 'none';
             if (config.showKb) initKeyboard();
-        } else if (['hw', 'tgt', 'sourceKey', 'mirror', 'homerow'].includes(key)) {
+        } else if (['hw', 'tgt', 'sourceKey', 'mirror', 'homerow', 'advanced'].includes(key)) {
             if (config.showKb) initKeyboard();
         } else if (key === 'debug') {
             DOM.debugArea.style.display = (config.debug && !state.testCompleted && !state.setupOpen) ? 'block' : 'none';
@@ -856,14 +929,26 @@
     }
 
     // Where the next character lives: on the base layer, or on the hold layer (then the hold key must be held too).
+    // Thumb keys that switch layers: Space (blue, top-right legend), Enter (red) and Del (orange).
+    const LAYER_THUMBS = { hold: 'L_T2', red: 'L_T1', orange: 'L_T3' };
+
+    // Where the next character lives: base layer first, then the Space-hold layer, then the red / orange
+    // symbol layers. `layer` names the layer (null = base) and `thumb` the thumb key that must be held with it.
     function findExpectedPos(ch) {
         const label = ch === ' ' ? 'SPACE' : ch.toUpperCase();
         const workingMap = config.mirror ? getMirroredMap(state.currentMap) : state.currentMap;
         let pos = Object.keys(workingMap).find(p => (workingMap[p] || "").toUpperCase() === label);
-        if (pos) return { pos, viaHold: false };
+        if (pos) return { pos, viaHold: false, layer: null, thumb: null };
         const hm = holdMap();
         pos = Object.keys(hm).find(p => hm[p].toUpperCase() === label);
-        return pos ? { pos, viaHold: true } : { pos: undefined, viaHold: false };
+        if (pos) return { pos, viaHold: true, layer: 'hold', thumb: LAYER_THUMBS.hold };
+        const posArray = HARDWARE[config.hw].pos;
+        const symLang = SYMBOL_LAYERS.red[activeLayoutName()] ? activeLayoutName() : 'us';
+        for (const layer of ['red', 'orange']) {
+            const i = SYMBOL_LAYERS[layer][symLang].findIndex(s => s && s !== '␣' && s.toUpperCase() === label);
+            if (i >= 0) return { pos: posArray[i], viaHold: true, layer, thumb: LAYER_THUMBS[layer] };
+        }
+        return { pos: undefined, viaHold: false, layer: null, thumb: null };
     }
 
     // The effective target map. Non-Latin languages (Hebrew, Arabic) force their generated
@@ -991,7 +1076,13 @@
             const icon = document.createElementNS("http://www.w3.org/2000/svg", "g");
             icon.setAttribute("class", "key-icon");
 
-            g.appendChild(rect); g.appendChild(text); g.appendChild(sub); g.appendChild(icon); DOM.keyboardSvg.appendChild(g);
+            // Red / orange layer legends (advanced mode), bottom-left and bottom-right like the keycaps.
+            const red = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            red.setAttribute("class", "key-layer red"); red.setAttribute("x", 9); red.setAttribute("y", h - 12);
+            const orange = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            orange.setAttribute("class", "key-layer orange"); orange.setAttribute("x", w - 9); orange.setAttribute("y", h - 12);
+
+            g.appendChild(rect); g.appendChild(text); g.appendChild(sub); g.appendChild(icon); g.appendChild(red); g.appendChild(orange); DOM.keyboardSvg.appendChild(g);
         });
         
         const pad = 12;
@@ -999,7 +1090,7 @@
         const height = maxY - minY;
         
         DOM.keyboardSvg.setAttribute("viewBox", `${minX - pad} ${minY - pad} ${width + pad*2} ${height + pad*2}`);
-        DOM.keyboardSvg.style.maxWidth = (width + pad*2) + "px";
+        DOM.keyboardSvg.style.maxWidth = ((width + pad*2) * 0.95) + "px";   // drawn at 95% size
 
         renderKeyboard();
     }
@@ -1036,6 +1127,12 @@
 
             const sub = g.querySelector('.key-sub');
             if (sub) sub.textContent = holdLabel;
+
+            const i = posArray.indexOf(p);
+            const symLang = SYMBOL_LAYERS.red[activeLayoutName()] ? activeLayoutName() : 'us';
+            const redEl = g.querySelector('.key-layer.red'), orangeEl = g.querySelector('.key-layer.orange');
+            if (redEl) redEl.textContent = config.advanced ? (SYMBOL_LAYERS.red[symLang][i] || "") : "";
+            if (orangeEl) orangeEl.textContent = config.advanced ? (SYMBOL_LAYERS.orange[symLang][i] || "") : "";
 
             // Word labels become keycap icons: top-left next to a blue legend (like letters), centred otherwise.
             const iconEl = g.querySelector('.key-icon');
@@ -1097,13 +1194,14 @@
 
     function highlightExpected() {
         if (!config.showKb || state.setupOpen) return;
-        document.querySelectorAll('.key-group').forEach(g => g.classList.remove('expected', 'expected-hold'));
+        document.querySelectorAll('.key-group').forEach(g => g.classList.remove('expected', 'expected-hold', 'expected-red', 'expected-orange'));
         if (!config.hints) return;
         const nextChar = state.sample[state.typed.length] || "";
         if (!nextChar) return;
-        const { pos, viaHold } = findExpectedPos(nextChar);
-        if (pos) { const group = document.getElementById(`key-${pos}`); if (group) group.classList.add(viaHold ? 'expected-hold' : 'expected'); }
-        if (viaHold) { const holdGroup = document.getElementById(`key-${HARDWARE[config.hw].hold.key}`); if (holdGroup) holdGroup.classList.add('expected'); }
+        // The key itself, plus the thumb key that has to be held for its layer (Space / Enter / Del).
+        const { pos, viaHold, layer, thumb } = findExpectedPos(nextChar);
+        if (pos) { const group = document.getElementById(`key-${pos}`); if (group) group.classList.add(viaHold ? 'expected-hold' : 'expected', ...(layer === 'red' || layer === 'orange' ? ['expected-' + layer] : [])); }
+        if (thumb) { const thumbGroup = document.getElementById(`key-${thumb}`); if (thumbGroup) thumbGroup.classList.add('expected'); }
     }
 
     function setActiveModeBtn(btnId) {
@@ -1299,13 +1397,15 @@ function endTest(earlyExit = false) {
         DOM.debugArea.style.display = 'none'; DOM.statsContainer.style.display = 'block';
         DOM.typingWrapper.classList.add('stats-active');
 
-        if (config.mode !== 'mistakes' && !earlyExit) { 
-            saveResult(wpm, acc, Math.round(timeSec), testTypeStr); 
-            renderHistorySummary(); applyHeatMap(state.mistakeChars); 
-            renderBestScores();
-        } else { 
-            applyHeatMap(state.mistakeChars); renderPracticeImprovement(); 
+        // Every try is logged; `kind` keeps personal bests and averages to finished regular tests.
+        const kind = config.mode === 'mistakes' ? 'practice' : earlyExit ? 'stopped' : 'test';
+        saveResult(wpm, acc, Math.round(timeSec), testTypeStr, kind);
+        if (kind === 'test') {
+            renderHistorySummary(); applyHeatMap(state.mistakeChars);
+        } else {
+            applyHeatMap(state.mistakeChars); if (kind === 'practice') renderPracticeImprovement();
         }
+        renderBestScores();
 
         renderSparkline(); renderFingerStats();
 
@@ -1329,25 +1429,84 @@ function endTest(earlyExit = false) {
        ========================================================================== */
     function loadHistory() { try { return JSON.parse(localStorage.getItem('moosy_history') || '[]'); } catch { return []; } }
     
-    function saveResult(wpm, acc, timeSec, modeStr) {
-        const history = loadHistory(); 
-        history.push({ wpm, acc, time: timeSec, mode: modeStr, date: Date.now(), chars: {...state.mistakeChars} });
-        if (history.length > 200) history.splice(0, history.length - 200); 
-        localStorage.setItem('moosy_history', JSON.stringify(history));
+    // Older entries have no `kind`: they were all finished regular tests.
+    const isTest = h => !h.kind || h.kind === 'test';
+    const loadTests = () => loadHistory().filter(isTest);
+
+    function saveResult(wpm, acc, timeSec, modeStr, kind = 'test') {
+        const history = loadHistory();
+        history.push({ wpm, acc, time: timeSec, mode: modeStr, date: Date.now(), kind, chars: {...state.mistakeChars} });
+        if (history.length > 5000) history.splice(0, history.length - 5000);   // keep localStorage well under its limit
+        try { localStorage.setItem('moosy_history', JSON.stringify(history)); } catch (e) { console.warn('History not saved:', e); }
     }
     
     function getRecentMistakeChars(n) {
-        const recent = n ? loadHistory().slice(-n) : loadHistory(); const totals = {};
+        const recent = n ? loadTests().slice(-n) : loadTests(); const totals = {};
         recent.forEach(h => { if (h.chars) Object.keys(h.chars).forEach(c => { totals[c] = (totals[c] || 0) + h.chars[c]; }); }); return totals;
     }
 
+    // Progress chart (settings page): WPM of every try, oldest to newest, with a rolling average of tests.
+    function renderProgressChart() {
+        const box = document.getElementById('progressContainer'), svg = document.getElementById('progressChart');
+        const all = loadHistory();
+        if (!box || all.length === 0) { if (box) box.style.display = 'none'; return; }
+        box.style.display = 'block';
+
+        const W = 1000, H = 240, L = 44, R = 16, T = 14, B = 34;
+        const n = all.length, maxW = Math.max(10, ...all.map(h => h.wpm));
+        const yMax = Math.ceil(maxW / 20) * 20;
+        const x = i => n === 1 ? L + (W - L - R) / 2 : L + i * (W - L - R) / (n - 1);
+        const y = v => T + (1 - v / yMax) * (H - T - B);
+        const NS = 'http://www.w3.org/2000/svg';
+        let out = '';
+
+        // recessive grid + y labels
+        for (let v = 0; v <= yMax; v += yMax / 4) {
+            out += `<line class="pg-grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/>`;
+            out += `<text class="pg-axis" x="${L - 8}" y="${y(v)}" text-anchor="end" dominant-baseline="central">${v}</text>`;
+        }
+        // x labels: first, last and a few in between (try numbers)
+        const step = Math.max(1, Math.ceil(n / 8));
+        for (let i = 0; i < n; i += step) out += `<text class="pg-axis" x="${x(i)}" y="${H - 12}" text-anchor="middle">${i + 1}</text>`;
+        if ((n - 1) % step !== 0) out += `<text class="pg-axis" x="${x(n - 1)}" y="${H - 12}" text-anchor="middle">${n}</text>`;
+
+        // 10-test rolling average (regular tests only)
+        const pts = []; const win = [];
+        all.forEach((h, i) => { if (!isTest(h)) return; win.push(h.wpm); if (win.length > 10) win.shift(); pts.push([x(i), y(win.reduce((a, b) => a + b, 0) / win.length)]); });
+        if (pts.length > 1) out += `<polyline class="pg-avg" points="${pts.map(p => p.join(',')).join(' ')}"/>`;
+
+        // one dot per try (hit area larger than the dot)
+        all.forEach((h, i) => {
+            out += `<g class="pg-dot ${isTest(h) ? 'test' : 'other'}" data-i="${i}">` +
+                   `<circle class="hit" cx="${x(i)}" cy="${y(h.wpm)}" r="10"/><circle class="mark" cx="${x(i)}" cy="${y(h.wpm)}" r="${n > 150 ? 3 : 4.5}"/></g>`;
+        });
+        svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+        svg.innerHTML = out;
+
+        const tip = document.getElementById('progressTip'), KIND = { test: 'test', practice: 'practice mistakes', stopped: 'stopped early' };
+        svg.querySelectorAll('.pg-dot').forEach(g => {
+            g.addEventListener('mouseenter', e => {
+                const h = all[+g.dataset.i];
+                const d = new Date(h.date).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                tip.innerHTML = `<b>${h.wpm} wpm</b> · ${h.acc}% acc<br><span>#${+g.dataset.i + 1} · ${h.mode} · ${KIND[h.kind || 'test']} · ${d}</span>`;
+                tip.style.opacity = 1;
+            });
+            g.addEventListener('mousemove', e => { tip.style.left = e.clientX + 'px'; tip.style.top = e.clientY + 'px'; });
+            g.addEventListener('mouseleave', () => { tip.style.opacity = 0; });
+        });
+        const tests = all.filter(isTest).length;
+        document.getElementById('progressSummary').textContent =
+            `${n} ${n === 1 ? 'try' : 'tries'} logged · ${tests} finished ${tests === 1 ? 'test' : 'tests'} · ${n - tests} practice / stopped early`;
+    }
+
     function renderBestScores() {
-        const history = loadHistory();
+        const history = loadTests();
+        renderProgressChart();
         if (history.length === 0) {
             DOM.bestScoresContainer.style.display = 'none';
             return;
         }
-        
+
         DOM.bestScoresContainer.style.display = 'block';
         const best = [...history].sort((a, b) => b.wpm - a.wpm).slice(0, 5);
         DOM.bestScoresList.innerHTML = best.map((h, i) => {
@@ -1390,7 +1549,7 @@ function endTest(earlyExit = false) {
     }
 
     function renderHistorySummary() {
-        const history = loadHistory(); if (history.length < 1) { DOM.historyInfo.innerHTML = ''; return; }
+        const history = loadTests(); if (history.length < 1) { DOM.historyInfo.innerHTML = ''; return; }
         const last3 = history.slice(-3);
         let html = `Last ${last3.length} tests avg: <span>${Math.round(last3.reduce((s, h) => s + h.wpm, 0) / last3.length)} wpm</span> / <span>${Math.round(last3.reduce((s, h) => s + h.acc, 0) / last3.length)}%</span> · ${history.length} total`;
         DOM.historyInfo.innerHTML = html;
